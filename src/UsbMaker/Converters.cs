@@ -25,12 +25,24 @@ public sealed class HexToBrushConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
-/// <summary>File path → BitmapImage loaded into memory (does not lock the file).</summary>
+/// <summary>
+/// File path → BitmapImage loaded into memory (does not lock the file).
+/// null / missing file → the built-in COMPUTER PLUS shop logo.
+/// </summary>
 public sealed class PathToImageConverter : IValueConverter
 {
+    private static readonly Lazy<BitmapImage> BuiltInLogo = new(() =>
+    {
+        var bmp = new BitmapImage(new Uri("pack://application:,,,/Assets/logo.png", UriKind.Absolute));
+        bmp.Freeze();
+        return bmp;
+    });
+
+    public static ImageSource DefaultLogo => BuiltInLogo.Value;
+
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is not string path || !File.Exists(path)) return null;
+        if (value is not string path || !File.Exists(path)) return BuiltInLogo.Value;
         try
         {
             var bmp = new BitmapImage();
@@ -43,7 +55,7 @@ public sealed class PathToImageConverter : IValueConverter
             bmp.Freeze();
             return bmp;
         }
-        catch { return null; }
+        catch { return BuiltInLogo.Value; }
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;

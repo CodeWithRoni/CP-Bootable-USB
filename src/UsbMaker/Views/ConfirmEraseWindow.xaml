@@ -4,6 +4,7 @@
         Title="Confirm — all data will be erased"
         Width="520" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
+        Icon="/Assets/app.ico"
         Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI" FontSize="13">
     <Border Margin="16" Style="{StaticResource Card}" BorderBrush="{StaticResource DangerBrush}">

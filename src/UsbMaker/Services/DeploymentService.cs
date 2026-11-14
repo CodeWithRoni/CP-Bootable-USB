@@ -213,7 +213,14 @@ public sealed class DeploymentService
         }
         else
         {
-            _log.Info("No custom logo selected — the built-in logo will be shown.");
+            // No custom image chosen → write the built-in COMPUTER PLUS shop logo.
+            var relative = Constants.LogoFileBaseName + ".png";
+            await using (var src = typeof(DeploymentService).Assembly.GetManifestResourceStream("CP.DefaultLogo.png")
+                                   ?? throw new InvalidOperationException("Built-in logo resource is missing."))
+            await using (var dst = File.Create(Path.Combine(dataRoot, relative)))
+                await src.CopyToAsync(dst, ct);
+            normalized.Branding.LogoPath = relative;
+            _log.Info($"COMPUTER PLUS shop logo written to {relative}.");
         }
 
         normalized.Meta = new MetaSection

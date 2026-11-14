@@ -32,41 +32,33 @@ jobs:
       - name: Build (Release)
         run: dotnet build CPBootableUSB.sln -c Release --no-restore
 
-      # Single self-contained UsbMaker.exe: runs on any Windows 10/11 x64 PC without installing .NET.
-      - name: Publish UsbMaker.exe
-        run: >
-          dotnet publish src/UsbMaker/UsbMaker.csproj -c Release -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          -o publish/UsbMaker
+      # Portable single-file UsbMaker.exe (settings live in UsbMaker.csproj): no .NET install needed, opens instantly.
+      - name: Publish portable UsbMaker.exe
+        run: dotnet publish src/UsbMaker/UsbMaker.csproj -c Release -o publish
 
-      - name: Add docs to package
+      - name: Prepare single exe
         shell: pwsh
         run: |
-          Copy-Item README.md publish/UsbMaker/
-          Copy-Item docs/ARCHITECTURE.md publish/UsbMaker/
-          New-Item -ItemType Directory -Force publish/UsbMaker/Payload | Out-Null
-          Copy-Item src/UsbMaker/Payload/README.txt publish/UsbMaker/Payload/
-          Get-ChildItem publish/UsbMaker -Recurse | Select-Object FullName, Length
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item publish/UsbMaker.exe "dist/CP-Bootable-USB.exe"
+          Get-ChildItem publish, dist | Select-Object FullName, Length
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CP-Bootable-USB-UsbMaker-win-x64
-          path: publish/UsbMaker
+          name: CP-Bootable-USB-win-x64
+          path: dist/CP-Bootable-USB.exe
           if-no-files-found: error
 
-      - name: Zip for release
+      - name: Name release exe
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
-        run: Compress-Archive -Path publish/UsbMaker/* -DestinationPath "CP-Bootable-USB-${{ github.ref_name }}-win-x64.zip"
+        run: Copy-Item "dist/CP-Bootable-USB.exe" "dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe"
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: CP-Bootable-USB-${{ github.ref_name }}-win-x64.zip
+          files: dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe
           tag_name: ${{ github.ref_name }}
           generate_release_notes: ${{ github.event_name != 'release' }}

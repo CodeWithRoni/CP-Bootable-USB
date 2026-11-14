@@ -8,10 +8,28 @@
     <AssemblyName>UsbMaker</AssemblyName>
     <AssemblyTitle>CP Bootable USB - USB Creator</AssemblyTitle>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- COMPUTER PLUS shop icon: used for the .exe file, title bar and taskbar. -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>false</SelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!--
+    Portable single-file build: `dotnet publish -c Release` produces ONE UsbMaker.exe that runs on any
+    Windows 10/11 x64 PC without installing .NET.
+    • ReadyToRun pre-compiles the code → much faster start.
+    • No single-file compression → no unpacking delay when the exe is opened.
+  -->
+  <PropertyGroup>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,9 +41,16 @@
     <ProjectReference Include="..\CP.Shared\CP.Shared.csproj" />
   </ItemGroup>
 
-  <!-- WinPE boot payload produced by build\Build-WinPE.ps1 (Phase 3). Copied next to UsbMaker.exe. -->
+  <!-- Shop logo + icon: WPF resources for the UI, and an embedded copy of the logo that is written to the USB. -->
   <ItemGroup>
-    <None Update="Payload\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\logo.png" />
+    <EmbeddedResource Include="Assets\logo.png" LogicalName="CP.DefaultLogo.png" />
+  </ItemGroup>
+
+  <!-- WinPE boot payload produced by build\Build-WinPE.ps1 (Phase 3). Copied next to UsbMaker.exe for local builds only. -->
+  <ItemGroup>
+    <None Update="Payload\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>
