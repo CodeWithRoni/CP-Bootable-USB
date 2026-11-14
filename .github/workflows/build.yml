@@ -43,11 +43,40 @@ jobs:
           Copy-Item publish/UsbMaker.exe "dist/CP-Bootable-USB.exe"
           Get-ChildItem publish, dist | Select-Object FullName, Length
 
-      - name: Upload build artifact
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart('v') }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $v"
+
+      # Windows installer: installs to Program Files\COMPUTER PLUS\CP Bootable USB, one Desktop icon.
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=${{ steps.ver.outputs.version }}" "/DPublishDir=..\publish" installer\CPBootableUSB.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: Upload portable exe
         uses: actions/upload-artifact@v4
         with:
-          name: CP-Bootable-USB-win-x64
+          name: CP-Bootable-USB-portable-win-x64
           path: dist/CP-Bootable-USB.exe
+          if-no-files-found: error
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CP-Bootable-USB-Setup
+          path: dist/CP-Bootable-USB-Setup-*.exe
           if-no-files-found: error
 
       - name: Name release exe
@@ -59,6 +88,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe
+          files: |
+            dist/CP-Bootable-USB-Setup-*.exe
+            dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe
           tag_name: ${{ github.ref_name }}
           generate_release_notes: ${{ github.event_name != 'release' }}

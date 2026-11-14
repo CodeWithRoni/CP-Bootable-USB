@@ -4,7 +4,7 @@
     <Product>CP Bootable USB</Product>
     <Authors>MD AMZAD HOSSAIN RONI</Authors>
     <Copyright>© COMPUTER PLUS, Bera, Pabna</Copyright>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <!-- Allows building the WPF projects on non-Windows CI; harmless on Windows. -->
