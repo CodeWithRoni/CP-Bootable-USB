@@ -8,9 +8,29 @@ Developed by MD AMZAD HOSSAIN RONI · Fokir Plaza, Ground Floor, Shop No #04, Be
 
 | Phase | অংশ | অবস্থা |
 |---|---|---|
-| 1 | `UsbMaker.exe` + `CP.Shared` | ✅ কোড তৈরি |
-| 2 | `BootLauncher.exe` (WinPE UI) | ⏳ পরবর্তী |
-| 3 | `build\Build-WinPE.ps1` (boot.wim + Payload) | ⏳ |
+| 1 | `UsbMaker.exe` + `CP.Shared` | ✅ |
+| 2 | `BootLauncher.exe` (WinPE বুট স্ক্রিন, দুই ইনস্টল ইঞ্জিন) | ✅ |
+| 3 | `build\Build-WinPE.ps1` (64-bit + 32-bit boot.wim + Payload) | ✅ |
+| — | Installer (`installer\CPBootableUSB.iss`) | ✅ |
+
+## Release বানানো (সব কিছু GitHub নিজেই বানায়)
+
+1. GitHub → **Releases → Draft a new release** → নতুন tag দিন (যেমন `v1.3.0`) → **Publish**।
+2. GitHub Actions ADK ইনস্টল করে 64-bit + 32-bit WinPE বানায় (~১০ মিনিট), তারপর Release-এ যোগ করে:
+   - `CP-Bootable-USB-Setup-x.y.z.exe` — পূর্ণ installer (WinPE বুট ফাইলসহ)
+   - `CP-Bootable-USB-portable.exe` — শুধু অ্যাপ (Payload আলাদা লাগবে)
+   - `CP-Bootable-USB-Payload.zip` — WinPE বুট ফাইল
+
+## নিজের PC-তে WinPE বানানো (ঐচ্ছিক)
+
+Administrator PowerShell, Windows ADK + WinPE add-on ইনস্টল থাকতে হবে:
+
+```powershell
+dotnet build CPBootableUSB.sln -c Release
+.\build\Build-WinPE.ps1 -LauncherDir .\src\BootLauncher\bin\Release\net48
+# 32-bit (ADK for Windows 10 version 2004 লাগবে):
+.\build\Build-WinPE.ps1 -Arch x86 -LauncherDir .\src\BootLauncher\bin\Release\net48
+```
 
 ## বিল্ড করার নিয়ম (Phase 1)
 
