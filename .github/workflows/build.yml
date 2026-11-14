@@ -6,6 +6,8 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [ published ]   # publishing a Release on github.com attaches the exe zip automatically
   workflow_dispatch:
 
 permissions:
@@ -66,4 +68,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: CP-Bootable-USB-${{ github.ref_name }}-win-x64.zip
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: ${{ github.event_name != 'release' }}
