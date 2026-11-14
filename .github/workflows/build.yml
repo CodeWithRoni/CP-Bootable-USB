@@ -1,5 +1,9 @@
 name: Build CP Bootable USB
 
+# Every push to main: build + portable exe + installer (without WinPE payload) — fast.
+# Publishing a Release (or "Run workflow" by hand): also builds the 64-bit and 32-bit WinPE
+# payload with the Windows ADK and puts it inside the installer → complete bootable-USB creator.
+
 on:
   push:
     branches: [ main ]
@@ -7,19 +11,37 @@ on:
   pull_request:
     branches: [ main ]
   release:
-    types: [ published ]   # publishing a Release on github.com attaches the exe zip automatically
+    types: [ published ]
   workflow_dispatch:
 
 permissions:
-  contents: write   # needed to publish a GitHub Release when a v* tag is pushed
+  contents: write   # attach files to GitHub Releases
+
+env:
+  # Windows ADK 10.1.26100 (Windows 11 24H2/25H2) — 64-bit WinPE
+  ADK_X64_URL: https://go.microsoft.com/fwlink/?linkid=2289980
+  ADK_X64_WINPE_URL: https://go.microsoft.com/fwlink/?linkid=2289981
+  # Windows ADK for Windows 10, version 2004 — last ADK with 32-bit WinPE
+  ADK_X86_URL: https://go.microsoft.com/fwlink/?linkid=2120254
+  ADK_X86_WINPE_URL: https://go.microsoft.com/fwlink/?linkid=2120253
 
 jobs:
+  # ------------------------------------------------------------------------------------------
   build:
     runs-on: windows-latest
-
+    outputs:
+      full: ${{ steps.mode.outputs.full }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Build mode
+        id: mode
+        shell: pwsh
+        run: |
+          $full = ('${{ github.event_name }}' -in 'release','workflow_dispatch') -or ('${{ github.ref }}' -like 'refs/tags/v*')
+          "full=$($full.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          Write-Host "Full build with WinPE payload: $full"
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v5
@@ -32,16 +54,115 @@ jobs:
       - name: Build (Release)
         run: dotnet build CPBootableUSB.sln -c Release --no-restore
 
-      # Portable single-file UsbMaker.exe (settings live in UsbMaker.csproj): no .NET install needed, opens instantly.
-      - name: Publish portable UsbMaker.exe
+      # Portable single-file UsbMaker.exe (settings in UsbMaker.csproj)
+      - name: Publish UsbMaker.exe
         run: dotnet publish src/UsbMaker/UsbMaker.csproj -c Release -o publish
 
-      - name: Prepare single exe
+      - name: Upload UsbMaker
+        uses: actions/upload-artifact@v4
+        with:
+          name: usbmaker
+          path: publish/UsbMaker.exe
+          if-no-files-found: error
+
+      - name: Upload BootLauncher (WinPE app)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootlauncher
+          path: |
+            src/BootLauncher/bin/Release/net48/*.exe
+            src/BootLauncher/bin/Release/net48/*.dll
+            src/BootLauncher/bin/Release/net48/*.config
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------------------------------
+  winpe-x64:
+    needs: build
+    if: needs.build.outputs.full == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bootlauncher
+          path: bootlauncher
+
+      - name: Install Windows ADK + WinPE add-on (10.1.26100)
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item publish/UsbMaker.exe "dist/CP-Bootable-USB.exe"
-          Get-ChildItem publish, dist | Select-Object FullName, Length
+        run: ./build/Install-ADK.ps1 -AdkUrl $env:ADK_X64_URL -WinPEUrl $env:ADK_X64_WINPE_URL -Arch amd64
+
+      - name: Build 64-bit WinPE
+        shell: pwsh
+        run: ./build/Build-WinPE.ps1 -Arch amd64 -LauncherDir bootlauncher -OutDir payload -Version "${{ github.ref_name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: payload-x64
+          path: payload
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------------------------------
+  winpe-x86:
+    needs: build
+    if: needs.build.outputs.full == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    continue-on-error: true   # optional: 64-bit payload ships even if this fails
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bootlauncher
+          path: bootlauncher
+
+      - name: Install Windows ADK + WinPE add-on (Windows 10, version 2004)
+        shell: pwsh
+        run: ./build/Install-ADK.ps1 -AdkUrl $env:ADK_X86_URL -WinPEUrl $env:ADK_X86_WINPE_URL -Arch x86
+
+      - name: Build 32-bit WinPE
+        shell: pwsh
+        run: ./build/Build-WinPE.ps1 -Arch x86 -LauncherDir bootlauncher -OutDir payload-x86 -Version "${{ github.ref_name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: payload-x86
+          path: payload-x86
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------------------------------
+  package:
+    needs: [ build, winpe-x64, winpe-x86 ]
+    if: always() && needs.build.result == 'success' && (needs.winpe-x64.result == 'success' || needs.winpe-x64.result == 'skipped')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: usbmaker
+          path: publish
+
+      - name: Download 64-bit WinPE payload
+        if: needs.winpe-x64.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: payload-x64
+          path: src/UsbMaker/Payload
+
+      - name: Download 32-bit WinPE payload
+        if: needs.winpe-x86.result == 'success'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: payload-x86
+          path: src/UsbMaker/Payload
+
+      - name: Show payload
+        shell: pwsh
+        run: Get-ChildItem src/UsbMaker/Payload -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
 
       - name: Read version
         id: ver
@@ -52,7 +173,6 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $v"
 
-      # Windows installer: installs to Program Files\COMPUTER PLUS\CP Bootable USB, one Desktop icon.
       - name: Install Inno Setup
         shell: pwsh
         run: |
@@ -61,23 +181,14 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=${{ steps.ver.outputs.version }}" "/DPublishDir=..\publish" installer\CPBootableUSB.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item publish/UsbMaker.exe "dist/CP-Bootable-USB-portable.exe"
+          if (Test-Path src/UsbMaker/Payload/Media) {
+            Compress-Archive -Path src/UsbMaker/Payload/* -DestinationPath dist/CP-Bootable-USB-Payload.zip
+          }
           Get-ChildItem dist | Select-Object Name, Length
-
-      - name: Upload BootLauncher (WinPE app)
-        uses: actions/upload-artifact@v4
-        with:
-          name: BootLauncher-net48
-          path: src/BootLauncher/bin/Release/net48/
-          if-no-files-found: error
-
-      - name: Upload portable exe
-        uses: actions/upload-artifact@v4
-        with:
-          name: CP-Bootable-USB-portable-win-x64
-          path: dist/CP-Bootable-USB.exe
-          if-no-files-found: error
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
@@ -86,17 +197,20 @@ jobs:
           path: dist/CP-Bootable-USB-Setup-*.exe
           if-no-files-found: error
 
-      - name: Name release exe
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: Copy-Item "dist/CP-Bootable-USB.exe" "dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe"
+      - name: Upload portable exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: CP-Bootable-USB-portable-win-x64
+          path: dist/CP-Bootable-USB-portable.exe
 
-      - name: Publish GitHub Release
+      - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: |
             dist/CP-Bootable-USB-Setup-*.exe
-            dist/CP-Bootable-USB-${{ github.ref_name }}-win-x64.exe
-          tag_name: ${{ github.ref_name }}
+            dist/CP-Bootable-USB-portable.exe
+            dist/CP-Bootable-USB-Payload.zip
+          fail_on_unmatched_files: false
           generate_release_notes: ${{ github.event_name != 'release' }}

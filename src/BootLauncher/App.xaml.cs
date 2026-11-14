@@ -15,6 +15,8 @@ namespace BootLauncher
 
             Log.Info($"BootLauncher {typeof(App).Assembly.GetName().Version} starting. WinPE={SystemInfo.IsWinPE}, 64-bit={Environment.Is64BitOperatingSystem}");
 
+            if (SystemInfo.IsWinPE) DisplayHelper.EnsureMinimumResolution();
+
             // Branding first so the window opens with the right colours/logo.
             BrandingService.Load();
             BrandingService.ApplyTheme(Resources);
