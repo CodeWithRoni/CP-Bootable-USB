@@ -59,7 +59,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ---------- LEFT: drive, options, actions ---------- -->
+            <!-- LEFT: drive, options, actions -->
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <Border Style="{StaticResource Card}">
@@ -182,7 +182,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ---------- RIGHT: branding editor ---------- -->
+            <!-- RIGHT: branding editor -->
             <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0">
                 <Grid>
                     <Grid.RowDefinitions>
