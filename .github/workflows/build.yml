@@ -65,6 +65,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-ChildItem dist | Select-Object Name, Length
 
+      - name: Upload BootLauncher (WinPE app)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BootLauncher-net48
+          path: src/BootLauncher/bin/Release/net48/
+          if-no-files-found: error
+
       - name: Upload portable exe
         uses: actions/upload-artifact@v4
         with:

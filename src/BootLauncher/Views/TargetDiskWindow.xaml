@@ -1,0 +1,49 @@
+<Window x:Class="BootLauncher.Views.TargetDiskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Choose the disk for Windows"
+        Width="760" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="False"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
+        FontFamily="Segoe UI" FontSize="14" ShowInTaskbar="False">
+    <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" Padding="24">
+        <StackPanel>
+            <TextBlock Text="Choose the disk for Windows" FontSize="22" FontWeight="Bold"/>
+            <TextBlock x:Name="EditionText" Style="{StaticResource Muted}" Margin="0,4,0,14"/>
+
+            <ListBox x:Name="DiskList" Style="{StaticResource CardList}" MaxHeight="300" SelectionChanged="DiskList_SelectionChanged">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource CardListItem}">
+                        <Setter Property="IsEnabled" Value="{Binding IsBlocked, Converter={StaticResource InverseBool}}"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Muted}" FontSize="12.5"/>
+                            <TextBlock Text="{Binding BlockedReason}" Foreground="{DynamicResource WarningBrush}" FontSize="12.5"
+                                       Visibility="{Binding IsBlocked, Converter={StaticResource BoolToVisibility}}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border CornerRadius="8" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1.5" Padding="14,10" Margin="0,10,0,0">
+                <StackPanel>
+                    <TextBlock Text="ALL DATA ON THE SELECTED DISK WILL BE ERASED" Foreground="{DynamicResource DangerBrush}"
+                               FontWeight="Bold" FontSize="15"/>
+                    <TextBlock x:Name="LayoutText" Style="{StaticResource Muted}" FontSize="12.5" Margin="0,4,0,8"/>
+                    <TextBlock x:Name="PromptText" Text="Select a disk above." Margin="0,0,0,6"/>
+                    <TextBox x:Name="ConfirmBox" TextChanged="ConfirmBox_TextChanged" IsEnabled="False" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Cancel" IsCancel="True" Width="120" Margin="0,0,10,0" Click="Cancel_Click"/>
+                <Button x:Name="InstallButton" Content="Erase &amp; Install" Width="180" IsEnabled="False"
+                        Style="{StaticResource DangerButton}" Click="Install_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

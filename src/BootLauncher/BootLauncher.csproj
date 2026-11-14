@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    BootLauncher runs INSIDE WinPE, which provides .NET Framework 4.8 (WinPE-NetFx).
+    AnyCPU + Prefer32Bit=false → the same exe runs natively in 64-bit and 32-bit WinPE.
+    The whole output folder (exe, .config, dlls) is copied to X:\CP\ by build\Build-WinPE.ps1.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>BootLauncher</RootNamespace>
+    <AssemblyName>BootLauncher</AssemblyName>
+    <AssemblyTitle>CP Bootable USB - Boot Launcher</AssemblyTitle>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Management" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CP.Shared\CP.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+
+</Project>
